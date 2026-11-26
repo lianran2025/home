@@ -1,429 +1,216 @@
-// 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', function() {
-    // 初始化AOS动画库
-    AOS.init({
-        duration: 1000,
-        once: true,
-        offset: 100,
-        delay: 100,
-        easing: 'ease-in-out'
-    });
+// 浙江越鑫检测 官网脚本
+// 说明：不依赖任何第三方库。即使本脚本加载失败，页面内容也会正常显示（动画只是锦上添花）。
+(function () {
+    'use strict';
 
-    // 移动端导航菜单
-    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-    const nav = document.querySelector('nav');
-    
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', function() {
-            this.classList.toggle('active');
-            nav.classList.toggle('active');
-        });
-        
-        // 点击导航链接后关闭菜单
-        const navLinks = document.querySelectorAll('nav ul li a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', function() {
-                if (window.innerWidth <= 768) {
-                    mobileMenuBtn.classList.remove('active');
-                    nav.classList.remove('active');
-                }
+    var header = document.querySelector('header');
+    var nav = document.querySelector('nav');
+    var menuBtn = document.querySelector('.mobile-menu-btn');
+    var navLinks = document.querySelectorAll('nav ul li a');
+    var sections = document.querySelectorAll('section[id]');
+    var isMobile = function () { return window.innerWidth <= 768; };
+
+    // 页脚年份自动更新
+    var yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    // ---------- 进入视口时的淡入动画（替代原 AOS 库） ----------
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var animated = document.querySelectorAll('[data-aos]');
+    if ('IntersectionObserver' in window && !reduceMotion) {
+        document.documentElement.classList.add('anim-ready');
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var el = entry.target;
+                var delay = parseInt(el.getAttribute('data-aos-delay') || '0', 10);
+                el.style.transitionDelay = delay + 'ms';
+                el.classList.add('aos-animate');
+                io.unobserve(el);
+                // 动画结束后移除标记，让卡片恢复自己原本的悬停效果
+                setTimeout(function () {
+                    el.removeAttribute('data-aos');
+                    el.classList.remove('aos-animate');
+                    el.style.transitionDelay = '';
+                }, delay + 900);
             });
+        }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
+        animated.forEach(function (el) { io.observe(el); });
+    }
+
+    // ---------- 移动端菜单 ----------
+    function closeMenu() {
+        if (!menuBtn) return;
+        menuBtn.classList.remove('active');
+        nav.classList.remove('active');
+        menuBtn.setAttribute('aria-expanded', 'false');
+        menuBtn.setAttribute('aria-label', '打开菜单');
+    }
+    if (menuBtn && nav) {
+        menuBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = !nav.classList.contains('active');
+            menuBtn.classList.toggle('active', open);
+            nav.classList.toggle('active', open);
+            menuBtn.setAttribute('aria-expanded', String(open));
+            menuBtn.setAttribute('aria-label', open ? '关闭菜单' : '打开菜单');
         });
-        
-        // 点击页面其他区域关闭菜单
-        document.addEventListener('click', function(e) {
-            if (!mobileMenuBtn.contains(e.target) && !nav.contains(e.target) && window.innerWidth <= 768) {
-                mobileMenuBtn.classList.remove('active');
-                nav.classList.remove('active');
-            }
+        document.addEventListener('click', function (e) {
+            if (isMobile() && !nav.contains(e.target)) closeMenu();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeMenu();
         });
     }
 
-    // 导航栏活跃状态和滚动效果
-    const sections = document.querySelectorAll('section');
-    const navLinks = document.querySelectorAll('nav ul li a');
-    
-    // 平滑滚动到锚点
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+    // ---------- 导航平滑滚动 ----------
+    navLinks.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            var target = document.querySelector(this.getAttribute('href'));
+            if (!target) return;
             e.preventDefault();
-            const targetId = this.getAttribute('href');
-            const targetSection = document.querySelector(targetId);
-            
-            if (targetSection) {
-                window.scrollTo({
-                    top: targetSection.offsetTop - 70,
-                    behavior: 'smooth'
-                });
-                
-                // 更新活跃导航项
-                navLinks.forEach(link => link.classList.remove('active'));
-                this.classList.add('active');
-            } else {
-                console.warn(`目标锚点 ${targetId} 不存在，请检查HTML中是否缺少对应的ID。`);
-            }
+            window.scrollTo({ top: target.offsetTop - 70, behavior: reduceMotion ? 'auto' : 'smooth' });
+            closeMenu();
         });
     });
-    
-    // 滚动时更新导航栏活跃状态
-    window.addEventListener('scroll', function() {
-        let current = '';
-        
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            const sectionHeight = section.clientHeight;
-            if (pageYOffset >= sectionTop - 150) {
-                current = section.getAttribute('id');
-            }
+
+    // ---------- 滚动：导航高亮 + 顶栏阴影（合并为一个节流处理） ----------
+    var ticking = false;
+    function onScroll() {
+        var y = window.scrollY || window.pageYOffset;
+        var current = '';
+        sections.forEach(function (s) {
+            if (y >= s.offsetTop - 150) current = s.id;
         });
-        
-        navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === `#${current}`) {
-                link.classList.add('active');
-            }
+        navLinks.forEach(function (link) {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + current);
         });
-        
-        // 滚动时导航栏样式调整
-        const header = document.querySelector('header');
-        if (window.scrollY > 100) {
-            header.style.padding = '10px 0';
-            header.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
-        } else {
-            header.style.padding = '15px 0';
-            header.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.05)';
+        if (header) header.classList.toggle('scrolled', y > 100);
+        ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+        if (!ticking) {
+            ticking = true;
+            window.requestAnimationFrame(onScroll);
         }
-    });
-    
-    // 业绩展示轮播
-    const prevBtn = document.querySelector('.prev-btn');
-    const nextBtn = document.querySelector('.next-btn');
-    const track = document.querySelector('.achievements-track');
-    const cards = document.querySelectorAll('.achievement-card');
-    const sliderContainer = document.querySelector('.achievements-slider');
-    
-    if (track && cards.length > 0 && sliderContainer) {
-        let currentPage = 0;
-        let cardWidth = 0;
-        let viewportWidth = 0;
-        let autoplayInterval = null;
-        let autoplayTimeout = null;
-        const autoplayDelay = 5000; // 自动播放间隔时间，毫秒
-        const userInactivityDelay = 4000; // 用户无操作后恢复自动播放的时间，毫秒
-        let userInteracted = false;
-        
-        // 创建指示器
-        function createIndicators() {
-            // 计算页面数量
-            let itemsPerPage = 3;
-            if (window.innerWidth <= 1200 && window.innerWidth > 768) {
-                itemsPerPage = 2;
-            } else if (window.innerWidth <= 768) {
-                itemsPerPage = 1;
-            }
-            
-            const maxPages = Math.ceil(cards.length / itemsPerPage);
-            
-            // 创建指示器容器
-            const indicatorsContainer = document.createElement('div');
-            indicatorsContainer.className = 'slider-indicators';
-            
-            // 清除现有指示器
-            const existingIndicators = sliderContainer.querySelector('.slider-indicators');
-            if (existingIndicators) {
-                existingIndicators.remove();
-            }
-            
-            // 添加指示器点
-            for (let i = 0; i < maxPages; i++) {
-                const indicator = document.createElement('div');
-                indicator.className = 'indicator';
-                if (i === currentPage) {
-                    indicator.classList.add('active');
-                }
-                
-                // 添加点击事件，允许直接跳转到对应页
-                indicator.addEventListener('click', () => {
-                    currentPage = i;
-                    updateCarousel();
-                    resetAutoplayAfterInteraction();
-                });
-                
-                indicatorsContainer.appendChild(indicator);
-            }
-            
-            sliderContainer.appendChild(indicatorsContainer);
+    }, { passive: true });
+    onScroll();
+
+    // ---------- 业绩展示轮播 ----------
+    var track = document.querySelector('.achievements-track');
+    var slider = document.querySelector('.achievements-slider');
+    var cards = document.querySelectorAll('.achievement-card');
+    var prevBtn = document.querySelector('.prev-btn');
+    var nextBtn = document.querySelector('.next-btn');
+
+    if (track && slider && cards.length) {
+        var page = 0;
+        var step = 0;
+        var timer = null;
+        var resumeTimer = null;
+        var AUTOPLAY = 5000;
+        var RESUME_AFTER = 4000;
+
+        var perPage = function () {
+            var w = window.innerWidth;
+            return w <= 768 ? 1 : (w <= 1200 ? 2 : 3);
+        };
+        var pageCount = function () { return Math.ceil(cards.length / perPage()); };
+
+        function measure() {
+            var gap = parseFloat(window.getComputedStyle(track).columnGap || window.getComputedStyle(track).gap) || (isMobile() ? 20 : 30);
+            step = cards[0].getBoundingClientRect().width + gap;
         }
-        
-        // 更新指示器状态
-        function updateIndicators() {
-            const indicators = document.querySelectorAll('.indicator');
-            if (indicators.length > 0) {
-                indicators.forEach((indicator, i) => {
-                    if (i === currentPage) {
-                        indicator.classList.add('active');
-                    } else {
-                        indicator.classList.remove('active');
-                    }
-                });
+
+        function buildDots() {
+            var old = slider.querySelector('.slider-indicators');
+            if (old) old.remove();
+            var wrap = document.createElement('div');
+            wrap.className = 'slider-indicators';
+            for (var i = 0; i < pageCount(); i++) {
+                (function (n) {
+                    var dot = document.createElement('button');
+                    dot.type = 'button';
+                    dot.className = 'indicator';
+                    dot.setAttribute('aria-label', '第 ' + (n + 1) + ' 页');
+                    dot.addEventListener('click', function () { go(n); pauseThenResume(); });
+                    wrap.appendChild(dot);
+                })(i);
             }
+            slider.appendChild(wrap);
         }
-        
-        // 设置初始布局
-        function setupCarousel() {
-            // 确保元素已经渲染好并且有正确的尺寸
-            setTimeout(() => {
-                viewportWidth = track.parentElement.offsetWidth;
-                const computedStyle = window.getComputedStyle(cards[0]);
-                const cardMargin = parseInt(computedStyle.marginRight) + parseInt(computedStyle.marginLeft);
-                const cardFullWidth = cards[0].offsetWidth + cardMargin;
-                cardWidth = cardFullWidth + 30; // 加上gap
-                
-                // 根据屏幕宽度调整样式
-                if (window.innerWidth <= 768) {
-                    track.style.gap = '20px';
-                    cardWidth = cardFullWidth + 20;
-                }
-                
-                createIndicators();
-                updateCarousel();
-                startAutoplay(); // 开始初始自动播放
-            }, 100);
-        }
-        
-        function updateCarousel() {
-            // 计算移动距离，考虑响应式设计
-            let itemsPerPage = 3;
-            if (window.innerWidth <= 1200 && window.innerWidth > 768) {
-                itemsPerPage = 2;
-            } else if (window.innerWidth <= 768) {
-                itemsPerPage = 1;
-            }
-            
-            const maxPages = Math.ceil(cards.length / itemsPerPage);
-            if (currentPage >= maxPages) {
-                currentPage = maxPages - 1;
-            }
-            
-            const translateX = currentPage * itemsPerPage * cardWidth;
-            track.style.transform = `translateX(-${translateX}px)`;
-            
-            // 更新按钮状态
-            updateButtonStates(itemsPerPage, maxPages);
-            // 更新指示器状态
-            updateIndicators();
-        }
-        
-        // 更新按钮状态
-        function updateButtonStates(itemsPerPage, maxPages) {
-            if (prevBtn && nextBtn) {
-                prevBtn.classList.remove('disabled');
-                nextBtn.classList.remove('disabled');
-                
-                if (currentPage === 0) {
-                    prevBtn.classList.add('disabled');
-                }
-                
-                if (currentPage === maxPages - 1) {
-                    nextBtn.classList.add('disabled');
-                }
-            }
-        }
-        
-        // 启动自动播放
-        function startAutoplay() {
-            stopAutoplay(); // 确保没有多个计时器同时运行
-            
-            autoplayInterval = setInterval(() => {
-                let itemsPerPage = 3;
-                if (window.innerWidth <= 1200 && window.innerWidth > 768) {
-                    itemsPerPage = 2;
-                } else if (window.innerWidth <= 768) {
-                    itemsPerPage = 1;
-                }
-                
-                const maxPages = Math.ceil(cards.length / itemsPerPage);
-                
-                if (currentPage < maxPages - 1) {
-                    currentPage++;
-                } else {
-                    currentPage = 0;
-                }
-                updateCarousel();
-            }, autoplayDelay);
-        }
-        
-        // 停止自动播放
-        function stopAutoplay() {
-            if (autoplayInterval) {
-                clearInterval(autoplayInterval);
-                autoplayInterval = null;
-            }
-            
-            if (autoplayTimeout) {
-                clearTimeout(autoplayTimeout);
-                autoplayTimeout = null;
-            }
-        }
-        
-        // 用户交互后设置计时器恢复自动播放
-        function resetAutoplayAfterInteraction() {
-            userInteracted = true;
-            stopAutoplay();
-            
-            // 设置在用户停止交互后恢复自动播放
-            autoplayTimeout = setTimeout(() => {
-                userInteracted = false;
-                startAutoplay();
-            }, userInactivityDelay);
-        }
-        
-        // 窗口大小改变时重新调整
-        window.addEventListener('resize', () => {
-            setupCarousel();
-        });
-        
-        // 上一页
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function() {
-                if (currentPage > 0) {
-                    currentPage--;
-                    updateCarousel();
-                    resetAutoplayAfterInteraction();
-                }
+
+        function render() {
+            var max = pageCount();
+            if (page > max - 1) page = max - 1;
+            if (page < 0) page = 0;
+            track.style.transform = 'translateX(-' + (page * perPage() * step) + 'px)';
+            if (prevBtn) prevBtn.classList.toggle('disabled', page === 0);
+            if (nextBtn) nextBtn.classList.toggle('disabled', page === max - 1);
+            slider.querySelectorAll('.indicator').forEach(function (d, i) {
+                d.classList.toggle('active', i === page);
             });
         }
-        
-        // 下一页
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function() {
-                let itemsPerPage = 3;
-                if (window.innerWidth <= 1200 && window.innerWidth > 768) {
-                    itemsPerPage = 2;
-                } else if (window.innerWidth <= 768) {
-                    itemsPerPage = 1;
-                }
-                
-                const maxPages = Math.ceil(cards.length / itemsPerPage);
-                
-                if (currentPage < maxPages - 1) {
-                    currentPage++;
-                    updateCarousel();
-                    resetAutoplayAfterInteraction();
-                }
-            });
+
+        function go(n) { page = n; render(); }
+
+        function stop() {
+            clearInterval(timer); timer = null;
+            clearTimeout(resumeTimer); resumeTimer = null;
         }
-        
-        // 鼠标交互处理
-        track.addEventListener('mouseenter', () => {
-            stopAutoplay();
-        });
-        
-        track.addEventListener('mouseleave', () => {
-            if (!userInteracted) {
-                startAutoplay();
-            } else {
-                resetAutoplayAfterInteraction();
-            }
-        });
-        
-        // 触摸滑动支持
-        let touchStartX = 0;
-        let touchEndX = 0;
-        let touchThreshold = 70; // 滑动距离阈值
-        
-        track.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            stopAutoplay();
-        }, { passive: true });
-        
-        track.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].clientX;
-            
-            // 检测滑动方向
-            const swipeDiff = touchEndX - touchStartX;
-            
-            if (Math.abs(swipeDiff) > touchThreshold) {
-                userInteracted = true;
-                
-                if (swipeDiff > touchThreshold) {
-                    // 向右滑动 - 显示上一页
-                    if (currentPage > 0) {
-                        currentPage--;
-                        updateCarousel();
-                    }
-                } else if (swipeDiff < -touchThreshold) {
-                    // 向左滑动 - 显示下一页
-                    let itemsPerPage = 3;
-                    if (window.innerWidth <= 1200 && window.innerWidth > 768) {
-                        itemsPerPage = 2;
-                    } else if (window.innerWidth <= 768) {
-                        itemsPerPage = 1;
-                    }
-                    
-                    const maxPages = Math.ceil(cards.length / itemsPerPage);
-                    
-                    if (currentPage < maxPages - 1) {
-                        currentPage++;
-                        updateCarousel();
-                    }
-                }
-                
-                resetAutoplayAfterInteraction();
-            } else {
-                // 如果不是有效滑动，且用户没有其他交互，则恢复自动播放
-                if (!userInteracted) {
-                    startAutoplay();
-                }
-            }
-        }, { passive: true });
-        
-        // 初始化轮播
-        setupCarousel();
-    }
-    
-    // 微信二维码交互
-    const wechatContainer = document.querySelector('.wechat-container');
-    const wechatQrcode = document.querySelector('.wechat-container .wechat-qrcode');
-    
-    if (wechatContainer && wechatQrcode) {
-        // 移动设备点击切换显示二维码
-        wechatContainer.addEventListener('click', function(e) {
-            if (window.innerWidth <= 768) {
-                e.stopPropagation();
-                // 移动设备上的点击切换显示
-                if (wechatQrcode.style.opacity === '1') {
-                    wechatQrcode.style.opacity = '0';
-                    wechatQrcode.style.transform = 'translateX(-50%) scale(0.9)';
-                    wechatQrcode.style.pointerEvents = 'none';
-                } else {
-                    wechatQrcode.style.opacity = '1';
-                    wechatQrcode.style.transform = 'translateX(-50%) scale(1)';
-                    wechatQrcode.style.pointerEvents = 'auto';
-                }
-            }
-        });
-        
-        // 点击页面其他区域关闭二维码
-        document.addEventListener('click', function(e) {
-            if (!wechatContainer.contains(e.target) && window.innerWidth <= 768) {
-                wechatQrcode.style.opacity = '0';
-                wechatQrcode.style.transform = 'translateX(-50%) scale(0.9)';
-                wechatQrcode.style.pointerEvents = 'none';
-            }
-        });
-    }
-    
-    // 添加视差滚动效果
-    window.addEventListener('scroll', function() {
-        const banner = document.querySelector('.banner');
-        const scrollPosition = window.pageYOffset;
-        
-        if (banner) {
-            banner.style.backgroundPositionY = `${scrollPosition * 0.5}px`;
+        function start() {
+            stop();
+            if (reduceMotion) return;
+            timer = setInterval(function () {
+                go(page < pageCount() - 1 ? page + 1 : 0);
+            }, AUTOPLAY);
         }
-    });
-    
-    // 页面加载完成后淡入显示
-    document.body.classList.add('loaded');
-}); 
+        function pauseThenResume() {
+            stop();
+            resumeTimer = setTimeout(start, RESUME_AFTER);
+        }
+
+        function setup() {
+            measure();
+            buildDots();
+            render();
+        }
+
+        if (prevBtn) prevBtn.addEventListener('click', function () {
+            if (page > 0) { go(page - 1); pauseThenResume(); }
+        });
+        if (nextBtn) nextBtn.addEventListener('click', function () {
+            if (page < pageCount() - 1) { go(page + 1); pauseThenResume(); }
+        });
+
+        slider.addEventListener('mouseenter', stop);
+        slider.addEventListener('mouseleave', start);
+
+        var startX = 0;
+        track.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX;
+            stop();
+        }, { passive: true });
+        track.addEventListener('touchend', function (e) {
+            var diff = e.changedTouches[0].clientX - startX;
+            if (diff > 50 && page > 0) go(page - 1);
+            else if (diff < -50 && page < pageCount() - 1) go(page + 1);
+            pauseThenResume();
+        }, { passive: true });
+
+        var resizeTimer = null;
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(setup, 150);
+        });
+
+        // 页面不可见时暂停自动播放，省电
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) stop(); else start();
+        });
+
+        if (document.readyState === 'complete') { setup(); start(); }
+        else window.addEventListener('load', function () { setup(); start(); });
+        setup();
+    }
+})();

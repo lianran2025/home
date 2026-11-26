@@ -29,12 +29,6 @@ body {
     line-height: 1.7;
     color: #444;
     background-color: var(--white-color);
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
-body.loaded {
-    opacity: 1;
 }
 
 .container {
@@ -140,7 +134,7 @@ header .container {
     align-items: center;
 }
 
-.logo h1 {
+.logo .logo-text {
     font-size: 1.8rem;
     color: var(--dark-color);
     font-weight: 700;
@@ -148,7 +142,7 @@ header .container {
     position: relative;
 }
 
-.logo h1::after {
+.logo .logo-text::after {
     content: "";
     position: absolute;
     width: 7px;
@@ -1107,7 +1101,7 @@ footer {
         margin-bottom: 10px;
     }
     
-    .logo h1 {
+    .logo .logo-text {
         font-size: 1.4rem;
     }
     
@@ -1413,7 +1407,7 @@ footer {
         padding: 10px 0;
     }
     
-    .logo h1 {
+    .logo .logo-text {
         font-size: 1.3rem;
     }
     
@@ -1850,3 +1844,115 @@ img::before {
         transform: scale(1);
     }
 } 
+
+/* ================= 2026-11 优化补充 ================= */
+
+/* Logo 文字（原为 h1，改为链接，避免页面出现两个一级标题） */
+.logo .logo-text {
+    display: inline-block;
+    text-decoration: none;
+    line-height: 1.2;
+}
+
+/* 内嵌 SVG 图标：继承原 <i> 的字号和颜色 */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.icon svg {
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
+/* 移动菜单按钮由 div 改为 button，清除按钮默认样式 */
+button.mobile-menu-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+}
+
+/* 轮播指示点改为 button */
+button.indicator {
+    border: 0;
+    padding: 0;
+}
+
+/* 横幅按钮组 */
+.banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+}
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: none;
+    padding: 12px 33px;
+}
+.btn-outline:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* 联系电话可点击拨打 */
+.tel-link {
+    color: var(--primary-color);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.tel-link:hover {
+    text-decoration: underline;
+}
+
+/* 手机端底部常驻拨号按钮 */
+.call-fab {
+    display: none;
+}
+@media screen and (max-width: 768px) {
+    .call-fab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        position: fixed;
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        z-index: 999;
+        padding: 12px 20px;
+        border-radius: 999px;
+        background-color: var(--accent-color);
+        color: var(--white-color);
+        font-weight: 700;
+        text-decoration: none;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    }
+    .call-fab .icon {
+        font-size: 1.1rem;
+    }
+    footer {
+        padding-bottom: 80px;
+    }
+}
+
+/* 进入视口淡入动画（替代 AOS 库）。只有脚本正常运行时才会先隐藏元素，
+   所以即使脚本加载失败，内容也始终可见。 */
+.anim-ready [data-aos] {
+    opacity: 0;
+    transition-property: opacity, transform;
+    transition-duration: 0.8s;
+    transition-timing-function: ease-out;
+}
+.anim-ready [data-aos="fade-up"] { transform: translate3d(0, 40px, 0); }
+.anim-ready [data-aos="fade-left"] { transform: translate3d(40px, 0, 0); }
+.anim-ready [data-aos="fade-right"] { transform: translate3d(-40px, 0, 0); }
+.anim-ready [data-aos="zoom-in"] { transform: scale(0.9); }
+.anim-ready [data-aos].aos-animate {
+    opacity: 1;
+    transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+}
