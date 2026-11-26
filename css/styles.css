@@ -1956,3 +1956,85 @@ button.indicator {
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
 }
+
+/* 合作客户（按行业） */
+.clients-block {
+    margin-top: 70px;
+}
+.clients-title {
+    text-align: center;
+    font-size: 1.6rem;
+    color: var(--dark-color);
+    margin-bottom: 8px;
+}
+.clients-subtitle {
+    text-align: center;
+    color: #777;
+    margin-bottom: 35px;
+}
+.clients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+.client-group {
+    background: var(--white-color);
+    border: 1px solid #e6eef8;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+}
+.client-group:hover {
+    box-shadow: var(--hover-shadow);
+    transform: translateY(-4px);
+}
+.client-group-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.client-group-head .line-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--light-color);
+    color: var(--primary-color);
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+.line-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.client-group-head h4 {
+    font-size: 1.15rem;
+    color: var(--dark-color);
+    margin: 0;
+}
+.client-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+}
+.client-list li {
+    background: var(--grey-color);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+    color: #444;
+    line-height: 1.6;
+}
+@media screen and (max-width: 576px) {
+    .clients-block { margin-top: 50px; }
+    .clients-grid { grid-template-columns: 1fr; gap: 16px; }
+    .client-group { padding: 18px; }
+    .client-list li { font-size: 0.85rem; }
+}
